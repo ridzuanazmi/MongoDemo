@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: MongoDemo
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/Test
