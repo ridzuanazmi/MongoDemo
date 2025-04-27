@@ -190,7 +190,7 @@ class UsersServiceTest {
             user.setName("Ridzuan");
             user.setEmail("ridzuan@example.com");
 
-            when(usersRepo.findByName("Ridzuan")).thenReturn(List.of(user));
+            when(usersRepo.findByNameIgnoreCase("Ridzuan")).thenReturn(List.of(user));
 
             // Act
             List<Users> result = usersService.searchByName("Ridzuan");
@@ -199,13 +199,13 @@ class UsersServiceTest {
             assertNotNull(result);
             assertEquals(1, result.size());
             assertEquals("Ridzuan", result.get(0).getName());
-            verify(usersRepo, times(1)).findByName("Ridzuan");
+            verify(usersRepo, times(1)).findByNameIgnoreCase("Ridzuan");
         }
 
         @Test
         public void testSearchByName_UserNotFound() {
             // Arrange
-            when(usersRepo.findByName("NonExistentUser")).thenReturn(List.of());
+            when(usersRepo.findByNameIgnoreCase("NonExistentUser")).thenReturn(List.of());
 
             // Act + Assert
             Exception exception = assertThrows(UserNotFoundException.class, () -> {
@@ -213,7 +213,7 @@ class UsersServiceTest {
             });
 
             assertTrue(exception.getMessage().contains("No users found with name"));
-            verify(usersRepo, times(1)).findByName("NonExistentUser");
+            verify(usersRepo, times(1)).findByNameIgnoreCase("NonExistentUser");
         }
     }
 

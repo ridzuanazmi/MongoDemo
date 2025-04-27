@@ -8,7 +8,7 @@ import java.util.List;
 public interface UsersRepo extends MongoRepository<Users, String> {
 
     // Auto-generates: Find users by name
-    List<Users> findByName(String name);
+    List<Users> findByNameIgnoreCase(String name);
 
     // Find user by email
     Users findByEmail(String email);

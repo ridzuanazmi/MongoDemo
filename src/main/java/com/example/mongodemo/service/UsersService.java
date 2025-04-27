@@ -43,7 +43,7 @@ public class UsersService {
     }
 
     public List<Users> searchByName(String name) {
-        List<Users> users = usersRepo.findByName(name);
+        List<Users> users = usersRepo.findByNameIgnoreCase(name);
         if (users == null || users.isEmpty()) {
             log.error("User with name {} was not found", name);
             throw new UserNotFoundException("No users found with name: " + name);
