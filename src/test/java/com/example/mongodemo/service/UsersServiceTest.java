@@ -1,8 +1,10 @@
 package com.example.mongodemo.service;
 
+import com.example.mongodemo.exception.UserNotFoundException;
 import com.example.mongodemo.model.Users;
 import com.example.mongodemo.repository.UsersRepo;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -29,46 +31,51 @@ class UsersServiceTest {
         MockitoAnnotations.openMocks(this);
     }
 
-    @Test
-    public void testSaveUser_Success() {
-        Users user = new Users();
-        user.setName("Ridzuan");
-        user.setEmail("ridzuan@example.com");
+    @Nested
+    class SaveUserTests {
 
-        Users savedUser = new Users();
-        savedUser.setId("123");
-        savedUser.setName("Ridzuan");
-        savedUser.setEmail("ridzuan@example.com");
+        @Test
+        public void testSaveUser_Success() {
+            Users user = new Users();
+            user.setName("Ridzuan");
+            user.setEmail("ridzuan@example.com");
 
-        Mockito.when(usersRepo.save(user)).thenReturn(savedUser);
+            Users savedUser = new Users();
+            savedUser.setId("123");
+            savedUser.setName("Ridzuan");
+            savedUser.setEmail("ridzuan@example.com");
 
-        Users result = usersService.saveUser(user);
+            Mockito.when(usersRepo.save(user)).thenReturn(savedUser);
 
-        assertNotNull(result);
-        assertEquals("123", result.getId());
-        verify(usersRepo, times(1)).save(user);
-    }
+            Users result = usersService.saveUser(user);
 
-    @Test
-    public void testSaveUser_Failure_NullId() {
-        // Arrange
-        Users userToSave = new Users();
-        userToSave.setName("Ridzuan");
-        userToSave.setEmail("ridzuan@example.com");
+            assertNotNull(result);
+            assertEquals("123", result.getId());
+            verify(usersRepo, times(1)).save(user);
+        }
 
-        Users savedUser = new Users(); // Simulate MongoDB save returns a user without ID
-        savedUser.setName("Ridzuan");
-        savedUser.setEmail("ridzuan@example.com");
+        @Test
+        public void testSaveUser_Failure_NullId() {
+            // Arrange
+            Users userToSave = new Users();
+            userToSave.setName("Ridzuan");
+            userToSave.setEmail("ridzuan@example.com");
 
-        when(usersRepo.save(userToSave)).thenReturn(savedUser);
+            Users savedUser = new Users(); // Simulate MongoDB save returns a user without ID
+            savedUser.setName("Ridzuan");
+            savedUser.setEmail("ridzuan@example.com");
 
-        // Act + Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            usersService.saveUser(userToSave);
-        });
+            when(usersRepo.save(userToSave)).thenReturn(savedUser);
 
-        assertTrue(exception.getMessage().contains("Failed to save user."));
-        verify(usersRepo, times(1)).save(userToSave);
+            // Act + Assert
+            Exception exception = assertThrows(RuntimeException.class, () -> {
+                usersService.saveUser(userToSave);
+            });
+
+            assertTrue(exception.getMessage().contains("Failed to save user."));
+            verify(usersRepo, times(1)).save(userToSave);
+        }
+
     }
 
     @Test
@@ -101,65 +108,149 @@ class UsersServiceTest {
         verify(usersRepo, times(1)).findAll();
     }
 
-    @Test
-    public void testDeleteUserById_Success() {
-        String userId = "123";
+    @Nested
+    class DeleteUserTests {
 
-        Mockito.when(usersRepo.existsById(userId)).thenReturn(true);
-        Mockito.doNothing().when(usersRepo).deleteById(userId);
+        @Test
+        public void testDeleteUserById_Success() {
+            String userId = "123";
 
-        assertDoesNotThrow(() -> usersService.deleteUser(userId));
-        verify(usersRepo, times(1)).deleteById(userId);
+            Mockito.when(usersRepo.existsById(userId)).thenReturn(true);
+            Mockito.doNothing().when(usersRepo).deleteById(userId);
+
+            assertDoesNotThrow(() -> usersService.deleteUser(userId));
+            verify(usersRepo, times(1)).deleteById(userId);
+        }
+
+        @Test
+        public void testDeleteUserById_UserNotFound() {
+            String userId = "123";
+
+            Mockito.when(usersRepo.existsById(userId)).thenReturn(false);
+
+            Exception exception = assertThrows(RuntimeException.class, () -> usersService.deleteUser(userId));
+
+            assertTrue(exception.getMessage().contains("Cannot delete. User with id"));
+            verify(usersRepo, never()).deleteById(userId);
+        }
+
     }
 
-    @Test
-    public void testDeleteUserById_UserNotFound() {
-        String userId = "123";
+    @Nested
+    class UpdateUserTests {
 
-        Mockito.when(usersRepo.existsById(userId)).thenReturn(false);
+        @Test
+        public void testUpdateUser_Success() {
+            String userId = "123";
 
-        Exception exception = assertThrows(RuntimeException.class, () -> usersService.deleteUser(userId));
+            Users existingUser = new Users();
+            existingUser.setId(userId);
+            existingUser.setName("Old Name");
+            existingUser.setEmail("old@example.com");
 
-        assertTrue(exception.getMessage().contains("Cannot delete. User with id"));
-        verify(usersRepo, never()).deleteById(userId);
+            Users updatedUser = new Users();
+            updatedUser.setName("New Name");
+            updatedUser.setEmail("new@example.com");
+
+            Mockito.when(usersRepo.findById(userId)).thenReturn(Optional.of(existingUser));
+            Mockito.when(usersRepo.save(any(Users.class))).thenReturn(existingUser);
+
+            Users result = usersService.updateUser(userId, updatedUser);
+
+            assertNotNull(result);
+            assertEquals("New Name", result.getName());
+            assertEquals("new@example.com", result.getEmail());
+            verify(usersRepo, times(1)).save(existingUser);
+        }
+
+        @Test
+        public void testUpdateUser_UserNotFound() {
+            String userId = "123";
+            Users updatedUser = new Users();
+            updatedUser.setName("New Name");
+            updatedUser.setEmail("new@example.com");
+
+            when(usersRepo.findById(userId)).thenReturn(Optional.empty());
+
+            Exception exception = assertThrows(RuntimeException.class, () -> usersService.updateUser(userId, updatedUser));
+
+            assertTrue(exception.getMessage().contains("User with id:" + userId + " not found"));
+            verify(usersRepo, never()).save(any(Users.class));
+        }
     }
 
-    @Test
-    public void testUpdateUser_Success() {
-        String userId = "123";
+    @Nested
+    class SearchByNameTests {
 
-        Users existingUser = new Users();
-        existingUser.setId(userId);
-        existingUser.setName("Old Name");
-        existingUser.setEmail("old@example.com");
+        @Test
+        public void testSearchByName_Success() {
+            // Arrange
+            Users user = new Users();
+            user.setId("1");
+            user.setName("Ridzuan");
+            user.setEmail("ridzuan@example.com");
 
-        Users updatedUser = new Users();
-        updatedUser.setName("New Name");
-        updatedUser.setEmail("new@example.com");
+            when(usersRepo.findByName("Ridzuan")).thenReturn(List.of(user));
 
-        Mockito.when(usersRepo.findById(userId)).thenReturn(Optional.of(existingUser));
-        Mockito.when(usersRepo.save(any(Users.class))).thenReturn(existingUser);
+            // Act
+            List<Users> result = usersService.searchByName("Ridzuan");
 
-        Users result = usersService.updateUser(userId, updatedUser);
+            // Assert
+            assertNotNull(result);
+            assertEquals(1, result.size());
+            assertEquals("Ridzuan", result.get(0).getName());
+            verify(usersRepo, times(1)).findByName("Ridzuan");
+        }
 
-        assertNotNull(result);
-        assertEquals("New Name", result.getName());
-        assertEquals("new@example.com", result.getEmail());
-        verify(usersRepo, times(1)).save(existingUser);
+        @Test
+        public void testSearchByName_UserNotFound() {
+            // Arrange
+            when(usersRepo.findByName("NonExistentUser")).thenReturn(List.of());
+
+            // Act + Assert
+            Exception exception = assertThrows(UserNotFoundException.class, () -> {
+                usersService.searchByName("NonExistentUser");
+            });
+
+            assertTrue(exception.getMessage().contains("No users found with name"));
+            verify(usersRepo, times(1)).findByName("NonExistentUser");
+        }
     }
 
-    @Test
-    public void testUpdateUser_UserNotFound() {
-        String userId = "123";
-        Users updatedUser = new Users();
-        updatedUser.setName("New Name");
-        updatedUser.setEmail("new@example.com");
+    @Nested
+    class GetUserByEmailTests {
 
-        when(usersRepo.findById(userId)).thenReturn(Optional.empty());
+        @Test
+        public void testGetUserByEmail_Success() {
+            // Arrange
+            Users user = new Users();
+            user.setId("1");
+            user.setName("Ridzuan");
+            user.setEmail("ridzuan@example.com");
 
-        Exception exception = assertThrows(RuntimeException.class, () -> usersService.updateUser(userId, updatedUser));
+            when(usersRepo.findByEmail("ridzuan@example.com")).thenReturn(user);
 
-        assertTrue(exception.getMessage().contains("User with id:" + userId + " not found"));
-        verify(usersRepo, never()).save(any(Users.class));
+            // Act
+            Users result = usersService.getUserByEmail("ridzuan@example.com");
+
+            // Assert
+            assertNotNull(result);
+            assertEquals("Ridzuan", result.getName());
+            verify(usersRepo, times(1)).findByEmail("ridzuan@example.com");
+        }
+
+        @Test
+        public void testGetUserByEmail_UserNotFound() {
+            // Arrange
+            when(usersRepo.findByEmail("nonexistent@example.com")).thenReturn(null);
+
+            // Act + Assert
+            Exception exception = assertThrows(UserNotFoundException.class, () -> {
+                usersService.getUserByEmail("nonexistent@example.com");
+            });
+
+            assertTrue(exception.getMessage().contains("User not found with email"));
+            verify(usersRepo, times(1)).findByEmail("nonexistent@example.com");
+        }
     }
 }
