@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,7 +50,55 @@ class UsersServiceTest {
     }
 
     @Test
-    void findAll() {
+    public void testSaveUser_Failure_NullId() {
+        // Arrange
+        Users userToSave = new Users();
+        userToSave.setName("Ridzuan");
+        userToSave.setEmail("ridzuan@example.com");
+
+        Users savedUser = new Users(); // Simulate MongoDB save returns a user without ID
+        savedUser.setName("Ridzuan");
+        savedUser.setEmail("ridzuan@example.com");
+
+        when(usersRepo.save(userToSave)).thenReturn(savedUser);
+
+        // Act + Assert
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            usersService.saveUser(userToSave);
+        });
+
+        assertTrue(exception.getMessage().contains("Failed to save user."));
+        verify(usersRepo, times(1)).save(userToSave);
+    }
+
+    @Test
+    public void testFindAllUsers_Success() {
+        // Arrange: Create sample data
+        Users user1 = new Users();
+        user1.setId("1");
+        user1.setName("Ridzuan");
+        user1.setEmail("ridzuan@example.com");
+
+        Users user2 = new Users();
+        user2.setId("2");
+        user2.setName("Azmi");
+        user2.setEmail("azmi@example.com");
+
+        List<Users> usersList = List.of(user1, user2);
+
+        when(usersRepo.findAll()).thenReturn(usersList);
+
+        // Act: Call the service method
+        List<Users> result = usersService.findAll();
+
+        // Assert: Check result
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("Ridzuan", result.get(0).getName());
+        assertEquals("Azmi", result.get(1).getName());
+
+        // Verify interaction
+        verify(usersRepo, times(1)).findAll();
     }
 
     @Test
